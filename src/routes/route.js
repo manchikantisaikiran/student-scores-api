@@ -6,10 +6,9 @@ const auth = require('../middlewear/auth')
 
 const router = express.Router()
 
-router.post('/candidate', async (req, res) => {
+router.post('/insert/candidate', async (req, res) => {
     const candidate = new Candidate(req.body)
     try {
-        console.log(candidate)
         await candidate.save()
         res.send(candidate)
     } catch (e) {
@@ -17,7 +16,7 @@ router.post('/candidate', async (req, res) => {
     }
 })
 
-router.post('/testScore', auth, async (req, res) => {
+router.post('/assign/marks', auth, async (req, res) => {
     const allowedUpdates = ['first_round', 'second_round', 'third_round']
     try {
         const student = await Score.findOne({ student: req.candidate._id })
@@ -30,9 +29,7 @@ router.post('/testScore', auth, async (req, res) => {
             return res.send(testScores)
         }
         allowedUpdates.forEach(update => student[update] = req.body[update] || student[update])
-        // student.first_round = req.body.first_round || student.first_round
-        // student.second_round = req.body.second_round || student.second_round
-        // student.third_round = req.body.third_round || student.third_round
+
         await student.save()
         res.send(student)
     } catch (e) {
@@ -40,30 +37,46 @@ router.post('/testScore', auth, async (req, res) => {
     }
 })
 
-router.get('/average', async (req, res) => {
+router.get('/average/marks', async (req, res) => {
     let average = {
-        avg_first: 0,
-        avg_second: 0,
-        avg_third: 0
+        first: 0,
+        second: 0,
+        third: 0
     };
-    let highestScore = 0;
+
+    let highestScoreCandidate = {
+        highestScore: 0
+    }
     let array = []
     try {
         const scores = await Score.find({})
+
         scores.forEach(score => {
             array.push(score.first_round + score.second_round + score.third_round)
-            average.avg_first += score.first_round
-            average.avg_second += score.second_round
-            average.avg_third += score.third_round
-        })
-        average.avg_first /= array.length;
-        average.avg_second /= array.length;
-        average.avg_third /= array.length;
-        
-        array.sort((a, b) => a - b)
-        highestScore = array[array.length - 1]
+            let totalScore = score.first_round + score.second_round + score.third_round
 
-        res.send({ highestScore, average })
+            if (highestScoreCandidate.highestScore < totalScore) {
+                highestScoreCandidate.highestScore = totalScore
+                highestScoreCandidate.student = score.student
+                highestScoreCandidate._id = score._id
+            }
+
+            average.first += score.first_round
+            average.second += score.second_round
+            average.third += score.third_round
+        })
+        average.first /= array.length;
+        average.second /= array.length;
+        average.third /= array.length;
+
+        const studentId = await Score.findOne({ student: highestScoreCandidate.student })
+        await studentId.populate('student').execPopulate()
+
+        highestScoreCandidate.email = id.student.email
+        highestScoreCandidate.name = id.student.name
+
+
+        res.send({ highestScoreCandidate, average })
     } catch (e) {
         res.status(400).send({ error: e.message })
     }
