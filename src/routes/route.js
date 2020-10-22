@@ -10,7 +10,7 @@ router.post('/insert/candidate', async (req, res) => {
     const candidate = new Candidate(req.body)
     try {
         await candidate.save()
-        res.send(candidate)
+        res.send("candidate inserted succesfully")
     } catch (e) {
         res.status(400).send({ error: e.message })
     }
@@ -26,12 +26,12 @@ router.post('/assign/marks', auth, async (req, res) => {
                 ...req.body
             })
             await testScores.save()
-            return res.send(testScores)
+            return res.send(`updated marks succesfully`)
         }
         allowedUpdates.forEach(update => student[update] = req.body[update] || student[update])
 
         await student.save()
-        res.send(student)
+        res.send(`updated marks succesfully`)
     } catch (e) {
         res.status(400).send()
     }
@@ -39,9 +39,9 @@ router.post('/assign/marks', auth, async (req, res) => {
 
 router.get('/average/marks', async (req, res) => {
     let average = {
-        first: 0,
-        second: 0,
-        third: 0
+        first_round: 0,
+        second_round: 0,
+        third_round: 0
     };
 
     let highestScoreCandidate = {
@@ -58,23 +58,22 @@ router.get('/average/marks', async (req, res) => {
             if (highestScoreCandidate.highestScore < totalScore) {
                 highestScoreCandidate.highestScore = totalScore
                 highestScoreCandidate.student = score.student
-                highestScoreCandidate._id = score._id
+                // highestScoreCandidate._id = score._id
             }
 
-            average.first += score.first_round
-            average.second += score.second_round
-            average.third += score.third_round
+            average.first_round += score.first_round
+            average.second_round += score.second_round
+            average.third_round += score.third_round
         })
-        average.first /= array.length;
-        average.second /= array.length;
-        average.third /= array.length;
+        average.first_round /= array.length;
+        average.second_round /= array.length;
+        average.third_round /= array.length;
 
         const studentId = await Score.findOne({ student: highestScoreCandidate.student })
         await studentId.populate('student').execPopulate()
 
-        highestScoreCandidate.email = id.student.email
-        highestScoreCandidate.name = id.student.name
-
+        highestScoreCandidate.email = studentId.student.email
+        highestScoreCandidate.name = studentId.name
 
         res.send({ highestScoreCandidate, average })
     } catch (e) {
